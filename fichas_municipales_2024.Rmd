@@ -1,0 +1,227 @@
+---
+title: ""
+output: 
+  word_document:
+    reference_docx: plantilla_ficha_municipal.docx
+params:
+  params_mun: "params_mun" 
+---
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+# Cargar librerias - - - - - - - - - - - - - - - - - -
+library(readxl)
+library(dplyr)
+library(ggplot2)    
+library(readxl)
+library(ggplot2)
+library(scales)
+library(tidyr)
+library(stringr) 
+library(lubridate) 
+library(gt)
+library(flextable)
+library(officer)
+
+# Parametro que funciona para enlazar con el ciclo - - - - - -
+Municipio_Ficha <- params$params_mun
+
+# Creación de asignación de un objeto que funcionan como filtro para los delitos de interés
+Delito_Ficha_1<- "Violencia familiar"
+Delito_Ficha_2<- "Feminicidio"
+
+
+# Insertar la fuente/font de "Montserrat" para las visualizaciones - - - - - -
+sysfonts::font_add_google(name = "Montserrat", family = "Montserrat")
+showtext::showtext_auto()
+
+```
+
+::: {align="center"}
+## **Situación actual en `r Municipio_Ficha` en torno a la violencia de género contra mujeres, adolescentes y niñez.**
+#### `r paste(str_to_title(mes), año)`
+::: 
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+   theme(text=element_text(family = gt::google_font("Montserrat")),
+        plot.title = element_text(face = "bold",size = 15, hjust = 0.5),
+        plot.subtitle = element_text(size = 12, hjust = 0.5, colour = "grey40"),
+        plot.caption = element_text(size = 12,colour = "grey40"),
+        axis.text.x = element_text(size = 13, colour = "black", face="bold"),
+        axis.text.y = element_text(size = 15, colour = "black"),
+        panel.grid.major = element_line(color = "grey77",
+                                        size = 0.5,
+                                        linetype = 2))->estilo_theme
+
+```
+
+<div style="text-align: justify">
+
+Con respecto de la violencia de género contra las mujeres, adolescentes y niñez, el comportamiento en los últimos años ha sido ascendente al punto de que el municipio de **`r Municipio_Ficha`** se encuentra lo siguiente:
+
+------------------------------------------------------------------------
+
+### **Violencia familiar**
+
+```{r include=FALSE, fig.width=10, fig.height=5, message=FALSE, warning=FALSE}
+# Gráfico principal - - - - - - - - - - - - - - - -
+
+datos_jalisco %>%
+  filter(Municipio %in% Municipio_Ficha,
+         Subtipo.de.delito %in% Delito_Ficha_1) %>%
+  group_by(Año) %>% 
+  summarise(Total=sum(value))->anual_vf
+
+anual_vf %>% 
+ mutate(text = paste("Año: ", Año,
+                    "\nTotal de carpetas: ", scales::comma(Total), sep=""))%>%
+ggplot(aes(x =as.factor(Año), y = Total, text=text)) +
+  geom_col(fill = "#8f5478") +
+  geom_label(aes(label=comma(Total)), size=4, vjust = 0.5, label.size = .1)+
+  scale_fill_hue(direction = 1) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(title = paste0("Gráfico 1. Carpetas anuales de investigación por el delito de \n", 
+                      tolower(Delito_Ficha_1)),
+       caption = "Elaborado con datos de Secretariado Ejecutivo del Sistema Nacional de Seguridad Pública",
+       x="", y="", color="", fill="") +
+  theme_bw()+
+  estilo_theme->g_anual_vf
+```
+
+```{r include=FALSE, fig.width=10, fig.height=5, message=FALSE, warning=FALSE}
+
+datos_jalisco %>%
+  filter(Municipio %in% Municipio_Ficha,
+         Subtipo.de.delito %in% Delito_Ficha_1) %>%
+  group_by(Subtipo.de.delito) %>% 
+  summarise(Total=sum(value))->vf_total
+
+vf_total<- vf_total[1,2]
+vf_total<-vf_total %>% unlist()
+
+vf_año<-anual_vf %>% arrange(-Total)
+vf_año<-vf_año[1,1]
+  
+vf_max<-anual_vf %>% arrange(-Total)
+vf_max<-vf_max[1,2]
+vf_max<-vf_max %>% unlist()
+
+datos_jalisco %>%
+  filter(Municipio %in% Municipio_Ficha,
+         Subtipo.de.delito %in% Delito_Ficha_1,
+         Año==2024) %>%
+  group_by(Municipio) %>% 
+  summarise(Total=sum(value))->vf_2024
+
+vf_2024<-vf_2024[1,2]
+vf_2024<-vf_2024 %>% unlist()
+
+
+datos_jalisco %>%
+  filter(Municipio %in% Municipio_Ficha,
+         Subtipo.de.delito %in% Delito_Ficha_1,
+         Año==2024) %>%
+  group_by(Municipio) %>% 
+  summarise(Total=sum(value)) %>% 
+  arrange(-Total)->vf_2024_mun
+
+mun_principales_vf<-vf_2024_mun %>% select(Municipio) %>% slice_head(n = 4) %>% unlist()
+
+vf_2024_mun %>% 
+  slice_head(n = 4) %>% 
+  summarise(Total=sum(Total))->vf_principal_4_suma
+
+vf_2024_mun<-vf_2024_mun %>% summarise(Total=sum(Total))
+
+principal_porcentaje_vf<-(vf_principal_4_suma/vf_2024_mun)*100
+
+
+```
+
+De 2015 a `r paste0(año, "(", mes ,")")` se han registrado **`r comma(vf_total)`** carpetas de **`r tolower(Delito_Ficha_1)`** en **`r Municipio_Ficha`**, el año con mayor registros es el **`r vf_año`** con **`r comma(vf_max)`**. En `r paste(mes, "de" ,año)` se han contabilizado **`r comma(vf_2024)`** carpetas.
+
+```{r echo=FALSE, fig.width=10, fig.height=5, message=FALSE, warning=FALSE}
+g_anual_vf
+```
+
+------------------------------------------------------------------------
+
+### **Feminicidio**
+
+
+```{r include=FALSE, fig.width=10, fig.height=5, message=FALSE, warning=FALSE}
+datos_jalisco %>%
+  filter(Municipio %in% Municipio_Ficha,
+         Subtipo.de.delito %in% Delito_Ficha_2) %>%
+  group_by(Año) %>% 
+  summarise(Total=sum(value))->anual_femi
+
+anual_femi %>% 
+  mutate(text = paste("Año: ", Año,
+                    "\nTotal de carpetas: ", scales::comma(Total), sep=""))%>%
+ggplot(aes(x =as.factor(Año), y = Total, text=text)) +
+  geom_col(fill = "#944862") +
+  geom_label(aes(label=comma(Total)), size=4, vjust = 0.5, label.size = .1)+
+  scale_fill_hue(direction = 1) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(title = paste0("Gráfica 2. Carpetas anuales de investigación por el delito de \n", 
+                      tolower(Delito_Ficha_2)),
+       caption = "Elaborado con datos de Secretariado Ejecutivo del Sistema Nacional de Seguridad Pública",
+       x="", y="", color="", fill="") +
+  theme_bw()+
+  estilo_theme->g_anual_femi
+
+```
+
+
+
+```{r include=FALSE, fig.width=10, fig.height=5, message=FALSE, warning=FALSE}
+
+datos_jalisco %>%
+  filter(Municipio %in% Municipio_Ficha,
+         Subtipo.de.delito %in% Delito_Ficha_2) %>%
+  group_by(Subtipo.de.delito) %>% 
+  summarise(Total=sum(value))->femi_total
+
+femi_total<- femi_total%>% 
+  summarise(Total=sum(Total))
+
+femi_año<-anual_femi %>% arrange(-Total)
+femi_año<-femi_año[1,1]
+  
+femi_max<-anual_femi %>% arrange(-Total)
+femi_max<-femi_max[1,2]
+
+
+datos_jalisco %>%
+  filter(Municipio %in% Municipio_Ficha,
+         Subtipo.de.delito %in% Delito_Ficha_2,
+         Año==2024) %>%
+  group_by(Año) %>% 
+  summarise(Total=sum(value))->femi_2024
+
+femi_2024<-femi_2024[1,2]
+femi_2024<-femi_2024 %>% unlist()
+
+datos_jalisco %>%
+  filter(Municipio %in% Municipio_Ficha,
+         Subtipo.de.delito %in% Delito_Ficha_2,
+         Año==2024) %>%
+  group_by(Municipio) %>% 
+  summarise(Total=sum(value)) %>% 
+  arrange(-Total)->femi_2024_mun
+
+mun_principales_femi<-femi_2024_mun %>% select(Municipio) %>% slice_head(n = 4) %>% unlist()
+
+femi_2024_mun %>% 
+  slice_head(n = 4) %>% 
+  summarise(Total=sum(Total))->femi_principal_4_suma
+
+femi_2024_mun<-femi_2024_mun %>% summarise(Total=sum(Total))
+principal_porcentaje_femi<-(femi_principal_4_suma/femi_2024_mun)*100
+```
+
+De 2015 a `r paste0(año, "(", mes ,")")` se han registrado **`r femi_total`** carpetas de **`r tolower(Delito_Ficha_2)`** en el municipio de **`r Municipio_Ficha`**, el año con mayor registros es el **`r femi_año`** con **`r femi_max`**. En `r paste(mes, "de" ,año)` se han contabilizado **`r femi_2024`** carpetas.La tasa de feminicidio por cada 100 mil mujeres es de **0.26** en el municipio.
+
+```{r echo=FALSE, fig.width=10, fig.height=5, message=FALSE, warning=FALSE}
+g_anual_femi
+```
